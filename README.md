@@ -21,7 +21,7 @@ It aims to be 100% compliant with [EN 16931](https://ec.europa.eu/digital-buildi
 First of all, make sure your environment meets the following requirements:
 
 - PHP 7.1 or higher
-- [SimpleXML extension](https://www.php.net/book.simplexml) for reading and exporting UBL/CII invoices
+- [SimpleXML extension](https://www.php.net/book.simplexml) for reading and exporting UBL invoices
 
 Then, you should be able to install this library using Composer:
 
@@ -103,6 +103,7 @@ These are the expected features for the library and how's it going so far:
 - [x] Compatibility with the most used [CIUS and extensions](https://ec.europa.eu/digital-building-blocks/wikis/display/EINVCOMMUNITY/Registry+of+CIUS+%28Core+Invoice+Usage+Specifications%29+and+Extensions)
 - [x] Export invoices to UBL documents
 - [x] Import invoices from UBL documents
-- [ ] Export invoices to CII documents
-- [ ] Import invoices from CII documents
 - [x] Proper documentation
+- [ ] MYPINT Validation
+- [ ] Import from LHDN BIS XML
+- [ ] Export to LHDN BIS XML
