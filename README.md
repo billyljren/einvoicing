@@ -13,7 +13,7 @@
 ## About
 ``This is a direct fork from https://josemmo.github.io/einvoicing/ with modifications to cater for Malaysia's MYPINT``
 
-eInvoicing is a PHP library for creating and reading electronic invoices according to the [Malaysia LHDN eInvoicing Initiative](https://www.hasil.gov.my/en/e-invoice/) and [Malaysia Peppol Authority](https://mdec.my/national-einvoicing).
+eInvoicing is a PHP library for creating and reading electronic invoices according to the [Malaysia LHDN eInvoicing Initiative](https://www.hasil.gov.my/en/e-invoice/) and [MDEC - Malaysia Peppol Authority](https://mdec.my/national-einvoicing).
 
 It aims to be 100% compliant with [EN 16931](https://ec.europa.eu/digital-building-blocks/wikis/x/boTXGw) as well as with the most popular CIUS and extensions, such as [PEPPOL BIS MYPINT](https://docs.peppol.eu/poac/my/pint-my/bis/).
 
