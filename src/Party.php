@@ -10,6 +10,8 @@ class Party {
     protected $tradingName = null;
     protected $companyId = null;
     protected $vatNumber = null;
+    protected $sstNumber = null;
+    protected $ttxNumber = null;
     protected $taxRegistrationId = null;
     protected $legalInformation = null;
     protected $contactName = null;
@@ -107,7 +109,22 @@ class Party {
         return $this->vatNumber;
     }
 
+    /**
+     * Get party SST number
+     * @return string|null Party SST number
+     */
+    public function getSstNumber(): ?string {
+        return $this->sstNumber;
+    }
 
+    /**
+     * Get party TTX number
+     * @return string|null Party TTX number
+     */
+    public function getTtxNumber(): ?string {
+        return $this->ttxNumber;
+    }
+    
     /**
      * Set party VAT number
      * @param  string|null $vatNumber Party VAT number
@@ -118,7 +135,26 @@ class Party {
         return $this;
     }
 
+    /**
+     * Set party SST number
+     * @param  string|null $sstNumber Party SST number
+     * @return self                   Party instance
+     */
+    public function setSstNumber(?string $sstNumber): self {
+        $this->sstNumber = $sstNumber;
+        return $this;
+    }
 
+    /**
+     * Set party TTX number
+     * @param  string|null $ttxNumber Party TTX number
+     * @return self                   Party instance
+     */
+    public function setTtxNumber(?string $ttxNumber): self {
+        $this->ttxNumber = $ttxNumber;
+        return $this;
+    }
+    
     /**
      * Get tax registration ID
      * @return Identifier|null Tax registration ID
