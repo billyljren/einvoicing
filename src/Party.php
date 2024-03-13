@@ -10,6 +10,8 @@ class Party {
     protected $tradingName = null;
     protected $companyId = null;
     protected $vatNumber = null;
+    protected $sstNumber = null;
+    protected $ttxNumber = null;
     protected $taxRegistrationId = null;
     protected $legalInformation = null;
     protected $contactName = null;
