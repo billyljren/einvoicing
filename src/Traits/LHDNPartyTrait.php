@@ -12,7 +12,27 @@ trait LHDNPartyTrait {
     protected $ttxNumber = null;
     protected $msicCode = null;
     protected $msicDescription = null;
+    protected $type = "BRN";
   
+    /**
+     * Get Type of Party | BRN / NRIC / PASSPORT / ARMY
+     * @return string|null Type
+     */
+    public function getType(): ?string {
+        return $this->type;
+    }
+
+
+    /**
+     * Set Tax Identification Number
+     * @param  string|null $type 
+     * @return self        Party instance
+     */
+    public function setType(?string $type): self {
+        $this->type = $type;
+        return $this;
+    }
+
     /**
      * Get Tax Identification Number
      * @return string|null TIN
