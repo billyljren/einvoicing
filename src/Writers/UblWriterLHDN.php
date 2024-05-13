@@ -14,7 +14,7 @@ use Einvoicing\Payments\Card;
 use Einvoicing\Payments\Mandate;
 use Einvoicing\Payments\Payment;
 use Einvoicing\Payments\Transfer;
-use UXML\UXML;
+use Einvoicing\UXML;
 use function in_array;
 
 class UblWriterLHDN extends AbstractWriter {
@@ -33,7 +33,7 @@ class UblWriterLHDN extends AbstractWriter {
             'xmlns' => $isCreditNoteProfile ? self::NS_CREDIT_NOTE : self::NS_INVOICE,
             'xmlns:cac' => self::NS_CAC,
             'xmlns:cbc' => self::NS_CBC,
-            'xmlns:ext' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2'
+            // 'xmlns:ext' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2'
         ]);
 
         // BT-24: Specification identifier
@@ -201,7 +201,7 @@ class UblWriterLHDN extends AbstractWriter {
             $this->addLineNode($xml, $line, $invoice, $isCreditNoteProfile, $lastGenId, $usedIds);
         }
 
-        $this->addDigitalSignature($xml);
+        // if ($signature) $this->addDigitalSignature($xml);
 
         return $xml;
     }
@@ -209,190 +209,14 @@ class UblWriterLHDN extends AbstractWriter {
     /**
      * @inheritdoc
      */
-    public function export(Invoice $invoice): string {
-        $totals = $invoice->getTotals();
-        $isCreditNoteProfile = $this->isCreditNoteProfile($invoice);
-
-        // Create root element
-        $rootElementName = $isCreditNoteProfile ? 'CreditNote' : 'Invoice';
-        $xml = UXML::newInstance($rootElementName, null, [
-            'xmlns' => $isCreditNoteProfile ? self::NS_CREDIT_NOTE : self::NS_INVOICE,
-            'xmlns:cac' => self::NS_CAC,
-            'xmlns:cbc' => self::NS_CBC,
-            'xmlns:ext' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2'
-        ]);
-
-        // BT-24: Specification identifier
-        // $specificationIdentifier = $invoice->getSpecification();
-        // if ($specificationIdentifier !== null) {
-        //     $xml->add('cbc:CustomizationID', $specificationIdentifier);
-        // }
-
-        // BT-23: Business process type
-        // $businessProcessType = $invoice->getBusinessProcess();
-        // if ($businessProcessType !== null) {
-        //     $xml->add('cbc:ProfileID', $businessProcessType);
-        // }
-
-        // BT-1: Invoice number
-        $number = $invoice->getNumber();
-        if ($number !== null) {
-            $xml->add('cbc:ID', $number);
-        }
-
-        // BT-2: Issue date
-        $issueDate = $invoice->getIssueDate();
-        if ($issueDate !== null) {
-            $xml->add('cbc:IssueDate', $issueDate->format('Y-m-d'));
-        }
-
-        $issueDate = $invoice->getIssueDate();
-        if ($issueDate !== null) {
-            $xml->add('cbc:IssueTime', $issueDate->format('H:i:s\Z'));
-        }
-
-
-        // BT-9: Due date (for invoice profile)
-        $dueDate = $invoice->getDueDate();
-        if (!$isCreditNoteProfile && $dueDate !== null) {
-            $xml->add('cbc:DueDate', $dueDate->format('Y-m-d'));
-        }
-
-        // BT-3: Invoice type code
-        $typeCodeName = $isCreditNoteProfile ? "cbc:CreditNoteTypeCode" : "cbc:InvoiceTypeCode";
-        $xml->add($typeCodeName, (string) str_pad($invoice->getType(), 2, "0", STR_PAD_LEFT), ["listVersionID" => "1.0"]);
-
-        // BT-22: Notes
-        foreach ($invoice->getNotes() as $note) {
-            $xml->add('cbc:Note', $note);
-        }
-
-        // BT-7: Tax point date
-        $taxPointDate = $invoice->getTaxPointDate();
-        if ($taxPointDate !== null) {
-            $xml->add('cbc:TaxPointDate', $taxPointDate->format('Y-m-d'));
-        }
-
-        // BT-5: Invoice currency code
-        $xml->add('cbc:DocumentCurrencyCode', $invoice->getCurrency());
-
-        // BT-6: VAT accounting currency code
-        $vatCurrency = $invoice->getVatCurrency();
-        if ($vatCurrency !== null) {
-            $xml->add('cbc:TaxCurrencyCode', $vatCurrency);
-        }
-
-        // BT-19: Buyer accounting reference
-        $buyerAccountingReference = $invoice->getBuyerAccountingReference();
-        if ($buyerAccountingReference !== null) {
-            $xml->add('cbc:AccountingCost', $buyerAccountingReference);
-        }
-
-        // BT-10: Buyer reference
-        $buyerReference = $invoice->getBuyerReference();
-        if ($buyerReference !== null) {
-            $xml->add('cbc:BuyerReference', $buyerReference);
-        }
-
-        // BG-14: Invoice period
-        $this->addPeriodNode($xml, $invoice);
-
-        // Order reference node
-        $this->addOrderReferenceNode($xml, $invoice);
-
-        // BG-3: Preceding invoice reference
-        foreach ($invoice->getPrecedingInvoiceReferences() as $invoiceReference) {
-            $invoiceDocumentReferenceNode = $xml->add('cac:BillingReference')->add('cac:InvoiceDocumentReference');
-            $invoiceDocumentReferenceNode->add('cbc:ID', $invoiceReference->getValue());
-            $invoiceReferenceIssueDate = $invoiceReference->getIssueDate();
-            if ($invoiceReferenceIssueDate !== null) {
-                $invoiceDocumentReferenceNode->add('cbc:IssueDate', $invoiceReferenceIssueDate->format('Y-m-d'));
-            }
-        }
-
-        // BT-17: Tender or lot reference (for invoice profile)
-        if (!$isCreditNoteProfile) {
-            $this->addTenderOrLotReferenceNode($xml, $invoice);
-        }
-
-        // BT-12: Contract reference
-        $contractReference = $invoice->getContractReference();
-        if ($contractReference !== null) {
-            $xml->add('cac:ContractDocumentReference')->add('cbc:ID', $contractReference);
-        }
-
-        // BG-24: Attachments node
-        foreach ($invoice->getAttachments() as $attachment) {
-            $this->addAttachmentNode($xml, $attachment);
-        }
-
-        // BT-17: Tender or lot reference (for credit note profile)
-        if ($isCreditNoteProfile) {
-            $this->addTenderOrLotReferenceNode($xml, $invoice);
-        }
-
-        // Seller node
-        $seller = $invoice->getSeller();
-        if ($seller !== null) {
-            $this->addSellerOrBuyerNode($xml->add('cac:AccountingSupplierParty'), $seller);
-        }
-
-        // Buyer node
-        $buyer = $invoice->getBuyer();
-        if ($buyer !== null) {
-            $this->addSellerOrBuyerNode($xml->add('cac:AccountingCustomerParty'), $buyer);
-        }
-
-        // Payee node
-        $payee = $invoice->getPayee();
-        if ($payee !== null) {
-            $this->addPayeeNode($xml, $payee);
-        }
-
-        // Delivery node
-        $delivery = $invoice->getDelivery();
-        if ($delivery !== null) {
-            $this->addDeliveryNode($xml, $delivery);
-        }
-
-        // Payment nodes
-        $payment = $invoice->getPayment();
-        if ($payment !== null) {
-            $this->addPaymentNodes($xml, $payment, $isCreditNoteProfile ? $dueDate : null);
-        }
-
-        // Allowances and charges
-        foreach ($invoice->getAllowances() as $item) {
-            $this->addAllowanceOrCharge($xml, $item, false, $invoice, $totals, null);
-        }
-        foreach ($invoice->getCharges() as $item) {
-            $this->addAllowanceOrCharge($xml, $item, true, $invoice, $totals, null);
-        }
-
-        // Invoice totals
-        $this->addTaxTotalNodes($xml, $totals);
-        $this->addDocumentTotalsNode($xml, $totals);
-
-        // Invoice lines
-        $lines = $invoice->getLines();
-        $lastGenId = 0;
-        $usedIds = [];
-        foreach ($lines as $line) {
-            $lineId = $line->getId();
-            if ($lineId !== null) {
-                $usedIds[] = $lineId;
-            }
-        }
-        foreach ($lines as $line) {
-            $this->addLineNode($xml, $line, $invoice, $isCreditNoteProfile, $lastGenId, $usedIds);
-        }
-
-        $this->addDigitalSignature($xml);
+    public function export(Invoice $invoice, $signature = false): string {
+        $xml = $this->getXML($invoice);
 
         return $xml->asXML();
     }
 
-    private function addDigitalSignature(UXML $parent){
+    // Step 6
+    public function addDigitalSignature(UXML $parent, $CertDigest, $SigningTimestamp, $IssuerName, $CertSerialNumber){
         $xml1 = $parent->add('ext:UBLExtensions');
         $xml2 = $xml1->add('ext:UBLExtension');
                 $xml2->add('ext:ExtensionURI', 'urn:oasis:names:specification:ubl:dsig:enveloped:xades');
@@ -407,48 +231,90 @@ class UblWriterLHDN extends AbstractWriter {
             $signatureInfo->add('ReferencedSignatureID', 'urn:oasis:names:specification:ubl:signature:Invoice');
 
             $signature = $signatureInfo->add('ds:Signature', null, ['Id' => '$SignaturePlaceholderToUpdate', 'xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#']);
-                $signedInfo = $signature->add('ds:SignedInfo');
-                $signedInfo->add('ds:CanonicalizationMethod', null, ['Algorithm' => 'https://www.w3.org/TR/xml-c14n11/#']);
-                $signedInfo->add('ds:SignatureMethod', null, ['Algorithm' => 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256']);
-                    $reference1 = $signedInfo->add('ds:Reference', null, ['Id' => 'id-doc-signed-data', 'URI' => '']);
-                    $transforms = $reference1->add('ds:Transforms');
-                        $transform1 = $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/TR/1999/REC-xpath-19991116']);
-                        $transform1->add('ds:XPath', 'not(//ancestor-or-self::ext:UBLExtensions)');
-                        $transform2 = $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/TR/1999/REC-xpath-19991116']);
-                        $transform2->add('ds:XPath', 'not(//ancestor-or-self::cac:Signature)');
-                        $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/2006/12/xml-c14n11']);
+            //     $signedInfo = $signature->add('ds:SignedInfo');
+            //     $signedInfo->add('ds:CanonicalizationMethod', null, ['Algorithm' => 'https://www.w3.org/TR/xml-c14n11/#']);
+            //     $signedInfo->add('ds:SignatureMethod', null, ['Algorithm' => 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256']);
+            //         $reference1 = $signedInfo->add('ds:Reference', null, ['Id' => 'id-doc-signed-data', 'URI' => '']);
+            //         $transforms = $reference1->add('ds:Transforms');
+            //             $transform1 = $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/TR/1999/REC-xpath-19991116']);
+            //             $transform1->add('ds:XPath', 'not(//ancestor-or-self::ext:UBLExtensions)');
+            //             $transform2 = $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/TR/1999/REC-xpath-19991116']);
+            //             $transform2->add('ds:XPath', 'not(//ancestor-or-self::cac:Signature)');
+            //             $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/2006/12/xml-c14n11']);
 
-                    $reference1->add('ds:DigestMethod', null,  ['Algorithm' => 'http://www.w3.org/2001/04/xmlenc#sha256']);
-                    $reference1->add('ds:DigestValue', base64_encode(''));
+            //         $reference1->add('ds:DigestMethod', null,  ['Algorithm' => 'http://www.w3.org/2001/04/xmlenc#sha256']);
+            //         $reference1->add('ds:DigestValue', base64_encode(''));
 
-                    $reference2 = $signedInfo->add('ds:Reference', null, ['Type' => 'http://www.w3.org/2000/09/xmldsig#SignatureProperties', 'URI' => '#id-xades-signed-props']);
-                    $reference2->add('ds:DigestMethod', null, ['Algorithm' => 'http://www.w3.org/2001/04/xmlenc#sha256']);
-                    $reference2->add('ds:DigestValue', 'PropsDigest = base64_encoded($certifcateDigestValue)');
+            //         $reference2 = $signedInfo->add('ds:Reference', null, ['Type' => 'http://www.w3.org/2000/09/xmldsig#SignatureProperties', 'URI' => '#id-xades-signed-props']);
+            //         $reference2->add('ds:DigestMethod', null, ['Algorithm' => 'http://www.w3.org/2001/04/xmlenc#sha256']);
+            //         // $reference2->add('ds:DigestValue', 'PropsDigest = base64_encoded($certifcateDigestValue)');
 
-            $signature->add('ds:SignatureValue', 'Sig => base64_encode()', ['ID' => 'DocSigValue']);
+            // $signature->add('ds:SignatureValue', 'Sig => base64_encode()', ['ID' => 'DocSigValue']);
 
-            $keyInfo = $signature->add('ds:KeyInfo');
-            $keyInfo1 = $keyInfo->add('ds:X509Data');
-            $keyInfo2 = $keyInfo1->add('ds:X509Certificate', '$certificatePublicKeyInfo read from cert file ? seems to be base64');
+            // $keyInfo = $signature->add('ds:KeyInfo');
+            // $keyInfo1 = $keyInfo->add('ds:X509Data');
+            // $keyInfo2 = $keyInfo1->add('ds:X509Certificate', '$certificatePublicKeyInfo read from cert file ? seems to be base64');
 
             $object = $signature->add('ds:Object');
             $qualifyProperties = $object->add('xades:QualifyingProperties', null, [
                 'xmlns:xades' => 'http://uri.etsi.org/01903/v1.3.2#',
                 'Target' => "signature"
             ]);
+
+            // Step 6 - Populate the SignedProperties section
             $signedProperties = $qualifyProperties->add('xades:SignedProperties', null, ['Id' => 'id-xades-signed-props']);
             $signedProperties2 = $signedProperties->add('xades:SignedSignatureProperties', null, ['Id' => 'id-xades-signed-props']);
-            $signedProperties2->add('xades:SigningTime', '');
+            $signedProperties2->add('xades:SigningTime', $SigningTimestamp);
             $cert = $signedProperties->add('xades:SigningCertificate');
             $cert1 = $cert->add('xades:Cert');
             $cert2 = $cert1->add('xades:CertDigest');
             $cert2->add('ds:DigestMethod', null, ['Algorithm' => 'http://www.w3.org/2001/04/xmlenc#sha256']);
-            $cert2->add('ds:DigestValue', 'CertDigest base64_encoded() of certificate information');
+            $cert2->add('ds:DigestValue', $CertDigest);
             $cert3 = $cert1->add('xades:IssuerSerial');
-            $cert3->add('ds:X509IssuerName', 'CN (Company Name) of the Digital Cert');
-            $cert3->add('ds:X509SerialNumber', 'Digital Certificate Serial Number');
+            $cert3->add('ds:X509IssuerName', $IssuerName);
+            $cert3->add('ds:X509SerialNumber', $CertSerialNumber);
 
-        return $xml1->asXML();
+        return [
+            "Root" => $xml1,
+            "SignedProperties" => $signedProperties,
+            // "PropsDigest" => $reference2,
+            "SignatureInfo" => $signatureInfo,
+            "Signature" => $signature,
+        ];
+    }
+
+    // Step 8
+    public function sign(UXML $root, UXML $signature, $Sig, $PropsDigest, $DocDigest){
+        $s = $root->add('cac:Signature');
+        $s->add('cbc:ID', 'urn:oasis:names:specification:ubl:signature:Invoice');
+        $s->add('cbc:SignatureMethod', 'urn:oasis:names:specification:ubl:dsig:enveloped:xades');
+
+        // $signature = $signatureInfo->add('ds:Signature', null, ['Id' => '$SignaturePlaceholderToUpdate', 'xmlns:ds' => 'http://www.w3.org/2000/09/xmldsig#']);
+            $signedInfo = $signature->add('ds:SignedInfo');
+            $signedInfo->add('ds:CanonicalizationMethod', null, ['Algorithm' => 'https://www.w3.org/TR/xml-c14n11/#']);
+            $signedInfo->add('ds:SignatureMethod', null, ['Algorithm' => 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256']);
+                $reference1 = $signedInfo->add('ds:Reference', null, ['Id' => 'id-doc-signed-data', 'URI' => '']);
+                $transforms = $reference1->add('ds:Transforms');
+                    $transform1 = $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/TR/1999/REC-xpath-19991116']);
+                    $transform1->add('ds:XPath', 'not(//ancestor-or-self::ext:UBLExtensions)');
+                    $transform2 = $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/TR/1999/REC-xpath-19991116']);
+                    $transform2->add('ds:XPath', 'not(//ancestor-or-self::cac:Signature)');
+                    $transforms->add('ds:Transform', null,  ['Algorithm' => 'http://www.w3.org/2006/12/xml-c14n11']);
+
+                $reference1->add('ds:DigestMethod', null,  ['Algorithm' => 'http://www.w3.org/2001/04/xmlenc#sha256']);
+                $reference1->add('ds:DigestValue', $DocDigest);
+
+                $reference2 = $signedInfo->add('ds:Reference', null, ['Type' => 'http://www.w3.org/2000/09/xmldsig#SignatureProperties', 'URI' => '#id-xades-signed-props']);
+                $reference2->add('ds:DigestMethod', null, ['Algorithm' => 'http://www.w3.org/2001/04/xmlenc#sha256']);
+                $reference2->add('ds:DigestValue', $PropsDigest);
+
+        $signature->add('ds:SignatureValue', $Sig, ['ID' => 'DocSigValue']);
+
+        $keyInfo = $signature->add('ds:KeyInfo');
+        $keyInfo1 = $keyInfo->add('ds:X509Data');
+        $keyInfo2 = $keyInfo1->add('ds:X509Certificate', '$certificatePublicKeyInfo read from cert file ? seems to be base64');
+
+        return $signature;
     }
 
 
@@ -604,16 +470,6 @@ class UblWriterLHDN extends AbstractWriter {
     private function addPostalAddressNode(UXML $parent, string $name, $source) {
         $xml = $parent->add($name);
 
-        // Street name
-        $addressLines = $source->getAddress();
-        if (isset($addressLines[0])) {
-            $xml->add('cbc:StreetName', $addressLines[0]);
-        }
-
-        // Additional street name
-        if (isset($addressLines[1])) {
-            $xml->add('cbc:AdditionalStreetName', $addressLines[1]);
-        }
 
         // City name
         $cityName = $source->getCity();
@@ -627,10 +483,26 @@ class UblWriterLHDN extends AbstractWriter {
             $xml->add('cbc:PostalZone', $postalCode);
         }
 
+        //Add on for LHDN / IRBM
+        $xml->add('cbc:CountrySubentityCode', '');
+
         // Subdivision
         $subdivision = $source->getSubdivision();
         if ($subdivision !== null) {
             $xml->add('cbc:CountrySubentity', $subdivision);
+        }
+
+        // Street name
+        $addressLines = $source->getAddress();
+        if (isset($addressLines[0])) {
+            $xml->add('cac:AddressLine')->add('cbc:Line', $addressLines[0]);
+            // $xml->add('cbc:StreetName', $addressLines[0]);
+        }
+
+        // Additional street name
+        if (isset($addressLines[1])) {
+            $xml->add('cac:AddressLine')->add('cbc:Line', $addressLines[1]);
+            // $xml->add('cbc:AdditionalStreetName', $addressLines[1]);
         }
 
         // Address line (third address line)
@@ -641,7 +513,10 @@ class UblWriterLHDN extends AbstractWriter {
         // Country
         $country = $source->getCountry();
         if ($country !== null) {
-            $xml->add('cac:Country')->add('cbc:IdentificationCode', $country);
+            $xml->add('cac:Country')->add('cbc:IdentificationCode', $country, [
+                'listID' => 'ISO3166-1',
+                'listAgencyID' => '6'
+            ]);
         }
 
         return $xml;
@@ -670,6 +545,14 @@ class UblWriterLHDN extends AbstractWriter {
         //     $identifierNode = $xml->add('cac:PartyIdentification');
         //     $this->addIdentifierNode($identifierNode, 'cbc:ID', $identifier);
         // }
+        if ($party->getTIN() != ""){
+            $identifierNode = $xml->add('cac:PartyIdentification');
+            $identifierNode->add('cbc:ID', $party->getTIN(), ['schemeID' => 'TIN']);
+        }
+        if ($party->getIDNumber() != ""){
+            $identifierNode = $xml->add('cac:PartyIdentification');
+            $identifierNode->add('cbc:ID', $party->getIDNumber(), ['schemeID' => $party->getType()]);
+        }
 
         // Trading name
         $tradingName = $party->getTradingName();
@@ -780,6 +663,7 @@ class UblWriterLHDN extends AbstractWriter {
      */
     private function addDeliveryNode(UXML $parent, Delivery $delivery) {
         $xml = $parent->add('cac:Delivery');
+        $dp = $xml->add('cac:DeliveryParty');
 
         // BT-72: Actual delivery date
         $date = $delivery->getDate();
@@ -797,7 +681,7 @@ class UblWriterLHDN extends AbstractWriter {
         }
 
         // Delivery postal address
-        $addressNode = $this->addPostalAddressNode($locationNode, 'cac:Address', $delivery);
+        $addressNode = $this->addPostalAddressNode($dp, 'cac:PostalAddress', $delivery);
         if ($addressNode->isEmpty()) {
             $addressNode->remove();
         }
@@ -805,7 +689,7 @@ class UblWriterLHDN extends AbstractWriter {
         // BT-70: Deliver name
         $name = $delivery->getName();
         if ($name !== null) {
-            $xml->add('cac:DeliveryParty')->add('cac:PartyName')->add('cbc:Name', $name);
+            $dp->add('cac:PartyLegalEntity')->add('ccbc:RegistrationName', $name);
         }
 
         // Remove location node if empty
