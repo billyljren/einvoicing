@@ -1,0 +1,43 @@
+{
+    "name": "billyljren/einvoicing",
+    "description": "Library for reading and creating Malaysian-compliant electronic invoices (EN 16931)",
+    "keywords": [
+        "invoicing",
+        "invoice",
+        "peppol",
+        "ubl",
+        "lhdn",
+        "myinvois",
+        "einvois",
+        "einvoice"
+    ],
+    "license": "MIT",
+    "homepage": "https://github.com/billyljren/einvoicing",
+    "authors": [
+        {
+            "name": "Lee Jung Ren",
+            "email": "billy@beaconx.com.my",
+            "homepage": "https://github.com/billyljren"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Einvoicing\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "php": ">=7.1",
+        "josemmo/uxml": "^0.1.4"
+    },
+    "require-dev": {
+        "ext-openssl": "*",
+        "phan/phan": "*",
+        "phpdocumentor/reflection": "^3.0|^5.1",
+        "symfony/phpunit-bridge": "*"
+    }
+}
