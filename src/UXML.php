@@ -1,5 +1,5 @@
 <?php
-namespace UXML;
+namespace Einvoicing;
 
 use DOMDocument;
 use DOMElement;
