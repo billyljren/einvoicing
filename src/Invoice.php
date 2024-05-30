@@ -10,6 +10,7 @@ use Einvoicing\Traits\AttachmentsTrait;
 use Einvoicing\Traits\BuyerAccountingReferenceTrait;
 use Einvoicing\Traits\InvoiceValidationTrait;
 use Einvoicing\Traits\PeriodTrait;
+use Einvoicing\Traits\LHDNDocumentTrait;
 use Einvoicing\Traits\PrecedingInvoiceReferencesTrait;
 use InvalidArgumentException;
 use OutOfBoundsException;
@@ -271,6 +272,7 @@ class Invoice {
     use PeriodTrait;
     use InvoiceValidationTrait;
     use PrecedingInvoiceReferencesTrait;
+    use LHDNDocumentTrait;
 
     /**
      * Invoice constructor

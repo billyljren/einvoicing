@@ -7,6 +7,9 @@ use Einvoicing\Traits\BuyerAccountingReferenceTrait;
 use Einvoicing\Traits\ClassificationIdentifiersTrait;
 use Einvoicing\Traits\PeriodTrait;
 use Einvoicing\Traits\VatTrait;
+use Einvoicing\Traits\SstTrait;
+use Einvoicing\Traits\TtxTrait;
+use Einvoicing\Traits\LHDNInvoiceLineTrait;
 
 class InvoiceLine {
     protected $id = null;
@@ -29,6 +32,9 @@ class InvoiceLine {
     use ClassificationIdentifiersTrait;
     use PeriodTrait;
     use VatTrait;
+    use SstTrait;
+    use TtxTrait;
+    use LHDNInvoiceLineTrait;
 
     /**
      * Get invoice line identifier

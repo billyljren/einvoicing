@@ -113,7 +113,7 @@ trait LHDNPartyTrait {
      * Get party SST number
      * @return string|null Party SST number
      */
-    public function getSstNumber(): ?string {
+    public function getSSTNumber(): ?string {
         return $this->sstNumber;
     }
   
@@ -123,7 +123,7 @@ trait LHDNPartyTrait {
      * @param  string|null $sstNumber Party SST number
      * @return self                   Party instance
      */
-    public function setSstNumber(?string $sstNumber): self {
+    public function setSSTNumber(?string $sstNumber): self {
         $this->sstNumber = $sstNumber;
         return $this;
     }
@@ -132,7 +132,7 @@ trait LHDNPartyTrait {
      * Get party TTX number
      * @return string|null Party TTX number
      */
-    public function getTtxNumber(): ?string {
+    public function getTTxNumber(): ?string {
         return $this->ttxNumber;
     }
 
@@ -141,7 +141,7 @@ trait LHDNPartyTrait {
      * @param  string|null $ttxNumber Party TTX number
      * @return self                   Party instance
      */
-    public function setTtxNumber(?string $ttxNumber): self {
+    public function setTTxNumber(?string $ttxNumber): self {
         $this->ttxNumber = $ttxNumber;
         return $this;
     }

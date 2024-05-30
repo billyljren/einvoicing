@@ -4,6 +4,7 @@ namespace Einvoicing;
 use Einvoicing\Traits\IdentifiersTrait;
 use Einvoicing\Traits\PostalAddressTrait;
 use Einvoicing\Traits\LHDNPartyTrait;
+use Einvoicing\Traits\LHDNPostalAddressTrait;
 
 class Party {
     protected $electronicAddress = null;
@@ -22,6 +23,7 @@ class Party {
     use IdentifiersTrait;
     use PostalAddressTrait;
     use LHDNPartyTrait;
+    use LHDNPostalAddressTrait;
 
     /**
      * Get electronic address

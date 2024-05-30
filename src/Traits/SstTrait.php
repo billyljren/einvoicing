@@ -1,7 +1,7 @@
 <?php
 namespace Einvoicing\Traits;
 
-SstTrait {
+trait SstTrait {
     protected $sstCategory = "S"; // TODO: add constants
     protected $sstRate = null;
     protected $sstExemptionReasonCode = null;

@@ -60,7 +60,6 @@ class UblWriterLHDN extends AbstractWriter {
             $xml->add('cbc:IssueDate', $issueDate->format('Y-m-d'));
         }
 
-        $issueDate = $invoice->getIssueDate();
         if ($issueDate !== null) {
             $xml->add('cbc:IssueTime', $issueDate->format('H:i:s\Z'));
         }
@@ -74,6 +73,7 @@ class UblWriterLHDN extends AbstractWriter {
 
         // BT-3: Invoice type code
         $typeCodeName = $isCreditNoteProfile ? "cbc:CreditNoteTypeCode" : "cbc:InvoiceTypeCode";
+        $typeCodeName = "cbc:InvoiceTypeCode";
         $xml->add($typeCodeName, (string) str_pad($invoice->getType(), 2, "0", STR_PAD_LEFT), ["listVersionID" => "1.0"]);
 
         // BT-22: Notes
@@ -89,6 +89,13 @@ class UblWriterLHDN extends AbstractWriter {
 
         // BT-5: Invoice currency code
         $xml->add('cbc:DocumentCurrencyCode', $invoice->getCurrency());
+
+        if ($invoice->getForexRate() != ""){
+            $forexNode = $xml->add('cac:TaxExchangeRate');
+            $forexNode->add('cbc:CalculationRate', $invoice->getForexRate());
+            $forexNode->add('cbc:SourceCurrencyCode', $invoice->getCurrency());
+            $forexNode->add('cbc:TargetCurrencyCode', 'MYR');
+        }
 
         // BT-6: VAT accounting currency code
         $vatCurrency = $invoice->getVatCurrency();
@@ -114,15 +121,19 @@ class UblWriterLHDN extends AbstractWriter {
         // Order reference node
         $this->addOrderReferenceNode($xml, $invoice);
 
-        // BG-3: Preceding invoice reference
-        foreach ($invoice->getPrecedingInvoiceReferences() as $invoiceReference) {
-            $invoiceDocumentReferenceNode = $xml->add('cac:BillingReference')->add('cac:InvoiceDocumentReference');
-            $invoiceDocumentReferenceNode->add('cbc:ID', $invoiceReference->getValue());
-            $invoiceReferenceIssueDate = $invoiceReference->getIssueDate();
-            if ($invoiceReferenceIssueDate !== null) {
-                $invoiceDocumentReferenceNode->add('cbc:IssueDate', $invoiceReferenceIssueDate->format('Y-m-d'));
-            }
+        if ($invoice->getBillReference() != ""){
+            $xml->add('cac:BillingReference')->add('cac:AdditionalDocumentReference')->add('cbc:ID', $invoice->getBillReference());
         }
+
+        // BG-3: Preceding invoice reference
+        // foreach ($invoice->getPrecedingInvoiceReferences() as $invoiceReference) {
+        //     $invoiceDocumentReferenceNode = $xml->add('cac:BillingReference')->add('cac:InvoiceDocumentReference');
+        //     $invoiceDocumentReferenceNode->add('cbc:ID', $invoiceReference->getValue());
+        //     $invoiceReferenceIssueDate = $invoiceReference->getIssueDate();
+        //     if ($invoiceReferenceIssueDate !== null) {
+        //         $invoiceDocumentReferenceNode->add('cbc:IssueDate', $invoiceReferenceIssueDate->format('Y-m-d'));
+        //     }
+        // }
 
         // BT-17: Tender or lot reference (for invoice profile)
         if (!$isCreditNoteProfile) {
@@ -173,6 +184,25 @@ class UblWriterLHDN extends AbstractWriter {
         $payment = $invoice->getPayment();
         if ($payment !== null) {
             $this->addPaymentNodes($xml, $payment, $isCreditNoteProfile ? $dueDate : null);
+        }
+
+        if ($invoice->getPaymentTerms() != ""){
+            $xml->add('cac:PaymentTerms')->add('cbc:Note', $invoice->getPaymentTerms());
+        }
+
+        if ($invoice->getPrepaidAmount() != ""){
+            $prepaidNode = $xml->add('cac:PrepaidPayment');
+
+            $prepaidNode->add('cbc:PaidAmount', $invoice->getPrepaidAmount(), ['currencyID' => 'MYR']);
+            if ($invoice->getPrepaidDate() != ""){
+                $prepaidNode->add('cbc:PaidDate', $invoice->getPrepaidDate());
+            }
+            if ($invoice->getPrepaidTime() != ""){
+                $prepaidNode->add('cbc:PaidTime', $invoice->getPrepaidTime());
+            }
+            if ($invoice->getPrepaidReference() != ""){
+                $prepaidNode->add('cbc:ID', $invoice->getPrepaidReference());
+            }
         }
 
         // Allowances and charges
@@ -361,6 +391,10 @@ class UblWriterLHDN extends AbstractWriter {
 
         $xml = $parent->add('cac:InvoicePeriod');
 
+        if ($source->getPeriodDescription() != ""){
+            $xml->add('cbc:Description', $source->getPeriodDescription());
+        }
+
         // Period start date
         if ($startDate !== null) {
             $xml->add('cbc:StartDate', $startDate->format('Y-m-d'));
@@ -484,13 +518,8 @@ class UblWriterLHDN extends AbstractWriter {
         }
 
         //Add on for LHDN / IRBM
-        $xml->add('cbc:CountrySubentityCode', '');
-
-        // Subdivision
-        $subdivision = $source->getSubdivision();
-        if ($subdivision !== null) {
-            $xml->add('cbc:CountrySubentity', $subdivision);
-        }
+        $state = $source->getState();
+        $xml->add('cbc:CountrySubentityCode', $state);
 
         // Street name
         $addressLines = $source->getAddress();
@@ -530,9 +559,12 @@ class UblWriterLHDN extends AbstractWriter {
      */
     private function addSellerOrBuyerNode(UXML $parent, Party $party) {
         $xml = $parent->add('cac:Party');
-        $msicCode = $party->getMSICCode();
-        $msicDesc = $party->getMSICDescription();
-        $xml->add('cbc:IndustryClassificationCode', $msicCode, ['name' => $msicDesc]);
+        
+        if ($party->getMSICCode() != ""){
+            $msicCode = $party->getMSICCode();
+            $msicDesc = $party->getMSICDescription();
+            $xml->add('cbc:IndustryClassificationCode', $msicCode, ['name' => $msicDesc]);
+        }
 
         // Electronic address
         // $electronicAddress = $party->getElectronicAddress();
@@ -553,6 +585,16 @@ class UblWriterLHDN extends AbstractWriter {
             $identifierNode = $xml->add('cac:PartyIdentification');
             $identifierNode->add('cbc:ID', $party->getIDNumber(), ['schemeID' => $party->getType()]);
         }
+        if ($party->getSSTNumber() != ""){
+            $identifierNode = $xml->add('cac:PartyIdentification');
+            $identifierNode->add('cbc:ID', $party->getSSTNumber(), ['schemeID' => 'SST']);
+        }
+        if ($party->getTTxNumber() != ""){
+            $identifierNode = $xml->add('cac:PartyIdentification');
+            $identifierNode->add('cbc:ID', $party->getTTxNumber(), ['schemeID' => 'TTX']);
+        }
+
+
 
         // Trading name
         $tradingName = $party->getTradingName();
@@ -712,9 +754,9 @@ class UblWriterLHDN extends AbstractWriter {
         // BT-82: Payment means name
         $meansCode = $payment->getMeansCode();
         if ($meansCode !== null) {
-            $meansText = $payment->getMeansText();
-            $attrs = ($meansText === null) ? [] : ['name' => $meansText];
-            $xml->add('cbc:PaymentMeansCode', $meansCode, $attrs);
+            // $meansText = $payment->getMeansText();
+            // $attrs = ($meansText === null) ? [] : ['name' => $meansText];
+            $xml->add('cbc:PaymentMeansCode', $meansCode);
         }
 
         // BT-9: Due date (for credit note profile)
@@ -971,7 +1013,7 @@ class UblWriterLHDN extends AbstractWriter {
         $totalsMatrix['cbc:PayableAmount'] = $totals->payableAmount;
 
         // Create and append XML nodes
-        foreach ($totalsMatrix as $field=>$amount) {
+        foreach ($totalsMatrix as $field => $amount) {
             $this->addAmountNode($xml, $field, $amount, $totals->currency);
         }
     }

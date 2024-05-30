@@ -1,7 +1,7 @@
 <?php
 namespace Einvoicing\Traits;
 
-TtxTrait {
+trait TtxTrait {
     protected $ttxCategory = "S"; // TODO: add constants
     protected $ttxRate = null;
 
